@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 2,
+  "dockerfilePath": "./Dockerfile",
+  "imageName": "ndf-backend:latest",
+  "ports": ["8000"],
+  "environmentVariables": {
+    "DATABASE_URL": "postgresql+asyncpg://ndf_user:ndf_password@database:5432/ndf-database",
+    "JWT_SECRET": "change-this-in-production",
+    "ADMIN_KEY": "admin123",
+    "CORS_ORIGINS": "[\"http://localhost\",\"http://127.0.0.1\"]"
+  }
+}
