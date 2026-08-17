@@ -123,7 +123,7 @@ async def admin_create_product(session: SessionDep, name: str = Form(...), categ
         if len(content) > 5 * 1024 * 1024:
             raise HTTPException(400, "Fotoğraf en fazla 5 MB olabilir")
         Path("uploads", filename).write_bytes(content)
-        image_url = f"http://localhost:8000/uploads/{filename}"
+        image_url = f"https://api.ndf.allspacesoftware.com/uploads/{filename}"
     product = ProductModel(external_url=f"admin://{uuid4().hex}", name=name, category=category, price_usd=price_usd or 0, price_try=price_try, price_eur=price_eur, default_currency=default_currency, stock=max(0, stock), image_url=image_url)
     session.add(product); await session.commit(); await session.refresh(product)
     return {"id": product.id, "name": product.name}
