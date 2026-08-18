@@ -94,7 +94,7 @@ class OrderCreate(BaseModel):
 
 
 class OrderStatusUpdate(BaseModel):
-    status: Literal["Onaylandı", "Hazırlanıyor", "Kargoda", "Tamamlandı", "İptal"]
+    status: Literal["Onaylandı", "Hazırlanıyor", "Kargoda", "Tamamlandı", "İptal", "Silindi"]
 
 
 class OrderShippingUpdate(BaseModel):
