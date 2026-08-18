@@ -1,7 +1,7 @@
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import DateTime, ForeignKey, Numeric, String, Text, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, Numeric, String, Text, func
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
@@ -16,10 +16,12 @@ class DealerModel(Base):
     official: Mapped[str] = mapped_column(String(120))
     tax_number: Mapped[str] = mapped_column(String(11), unique=True)
     city: Mapped[str] = mapped_column(String(80))
+    address: Mapped[str] = mapped_column(Text, default="", server_default="")
     phone: Mapped[str] = mapped_column(String(30))
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
     password_hash: Mapped[str] = mapped_column(String(255))
     discount_percent: Mapped[Decimal] = mapped_column(Numeric(5, 2), default=0, server_default="0")
+    is_approved: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
@@ -44,6 +46,9 @@ class OrderModel(Base):
     dealer_id: Mapped[int] = mapped_column(ForeignKey("dealers.id", ondelete="RESTRICT"), index=True)
     status: Mapped[str] = mapped_column(String(30), default="Hazırlanıyor")
     note: Mapped[str] = mapped_column(Text, default="")
+    shipping_address: Mapped[str] = mapped_column(Text, default="", server_default="")
+    shipping_company: Mapped[str] = mapped_column(String(100), default="", server_default="")
+    tracking_number: Mapped[str] = mapped_column(String(150), default="", server_default="")
     total_try: Mapped[Decimal] = mapped_column(Numeric(14, 2))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     items: Mapped[list["OrderItemModel"]] = relationship(cascade="all, delete-orphan", lazy="selectin")

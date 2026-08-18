@@ -28,21 +28,23 @@ class AuthService:
     def __init__(self, repository: SqlAlchemyDealerRepository) -> None:
         self.repository = repository
 
-    async def register(self, data: DealerCreate) -> tuple[DealerModel, str]:
+    async def register(self, data: DealerCreate) -> DealerModel:
         if await self.repository.get_by_email(str(data.email)):
             raise HTTPException(status.HTTP_409_CONFLICT, "Bu e-posta zaten kayıtlı")
         dealer = DealerModel(
             **data.model_dump(exclude={"password", "email"}),
             password_hash=hash_password(data.password),
             email=str(data.email).lower(),
+            is_approved=False,
         )
-        dealer = await self.repository.add(dealer)
-        return dealer, create_access_token(str(dealer.id))
+        return await self.repository.add(dealer)
 
     async def login(self, data: DealerLogin) -> tuple[DealerModel, str]:
         dealer = await self.repository.get_by_email(str(data.email))
         if not dealer or not verify_password(data.password, dealer.password_hash):
             raise HTTPException(status.HTTP_401_UNAUTHORIZED, "E-posta veya şifre hatalı")
+        if not dealer.is_approved:
+            raise HTTPException(status.HTTP_403_FORBIDDEN, "Bayi başvurunuz henüz yönetici tarafından onaylanmadı")
         return dealer, create_access_token(str(dealer.id))
 
 
@@ -60,4 +62,4 @@ class OrderService:
         items = [OrderItemModel(product_id=p.id, quantity=quantities[p.id], unit_price_try=(product_price_try(p) * multiplier).quantize(Decimal("0.01"))) for p in products]
         total = sum((item.unit_price_try * item.quantity for item in items), Decimal("0"))
         number = f"NDF-{datetime.now(UTC).strftime('%y%m%d%H%M%S%f')[-12:]}"
-        return await self.orders.add(OrderModel(order_number=number, dealer_id=dealer.id, note=data.note, total_try=total, items=items))
+        return await self.orders.add(OrderModel(order_number=number, dealer_id=dealer.id, note=data.note, shipping_address=data.shipping_address, total_try=total, items=items))

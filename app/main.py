@@ -14,13 +14,20 @@ from app.presentation.router import api_router
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    if get_settings().environment == "development":
-        async with engine.begin() as connection:
+    async with engine.begin() as connection:
+        if get_settings().environment == "development":
             await connection.run_sync(Base.metadata.create_all)
             # create_all mevcut tabloları değiştirmez; eski kurulumları veri kaybı olmadan yükselt.
             await connection.execute(text("ALTER TABLE products ADD COLUMN IF NOT EXISTS price_try NUMERIC(14, 2)"))
             await connection.execute(text("ALTER TABLE products ADD COLUMN IF NOT EXISTS price_eur NUMERIC(12, 2)"))
             await connection.execute(text("ALTER TABLE products ADD COLUMN IF NOT EXISTS default_currency VARCHAR(3) NOT NULL DEFAULT 'USD'"))
+        # Mevcut bayiler açık kalır; bu geçişten sonraki yeni başvurular onay bekler.
+        await connection.execute(text("ALTER TABLE dealers ADD COLUMN IF NOT EXISTS is_approved BOOLEAN NOT NULL DEFAULT TRUE"))
+        await connection.execute(text("ALTER TABLE dealers ALTER COLUMN is_approved SET DEFAULT FALSE"))
+        await connection.execute(text("ALTER TABLE dealers ADD COLUMN IF NOT EXISTS address TEXT NOT NULL DEFAULT ''"))
+        await connection.execute(text("ALTER TABLE orders ADD COLUMN IF NOT EXISTS shipping_address TEXT NOT NULL DEFAULT ''"))
+        await connection.execute(text("ALTER TABLE orders ADD COLUMN IF NOT EXISTS shipping_company VARCHAR(100) NOT NULL DEFAULT ''"))
+        await connection.execute(text("ALTER TABLE orders ADD COLUMN IF NOT EXISTS tracking_number VARCHAR(150) NOT NULL DEFAULT ''"))
     yield
     await engine.dispose()
 

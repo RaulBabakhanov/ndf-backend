@@ -23,6 +23,8 @@ async def get_current_dealer(session: SessionDep, token: Annotated[str, Depends(
     dealer = await SqlAlchemyDealerRepository(session).get_by_id(dealer_id)
     if not dealer:
         raise credentials_error
+    if not dealer.is_approved:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Bayi hesabınız yönetici onayı bekliyor")
     return dealer
 
 

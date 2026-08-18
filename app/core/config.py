@@ -21,6 +21,8 @@ class Settings(BaseSettings):
     database_url: str = Field(default_factory=default_database_url)
     jwt_secret: str = "development-only-change-me"
     admin_key: str = ""
+    turnstile_secret_key: str = ""
+    turnstile_expected_hostname: str = ""
     access_token_expire_minutes: int = 60
     cors_origins: list[str] = ["http://localhost:5173", "http://127.0.0.1:5173"]
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
