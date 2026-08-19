@@ -1,4 +1,5 @@
 from collections import defaultdict, deque
+from hmac import compare_digest
 from time import monotonic
 from typing import Annotated
 
@@ -9,6 +10,7 @@ from uuid import uuid4
 
 from app.application.schemas import (
     AuthResponse,
+    AdminLogin,
     DealerApprovalUpdate,
     DealerCreate,
     DealerDiscountUpdate,
@@ -31,8 +33,9 @@ from app.infrastructure.repositories import (
 )
 from app.presentation.dependencies import CurrentDealer, SessionDep
 from app.core.config import get_settings
-from app.core.security import hash_password
+from app.core.security import create_access_token, decode_access_token, hash_password
 from app.core.turnstile import verify_turnstile
+from app.core.exchange_rates import get_exchange_rates
 from app.infrastructure.models import DealerModel, OrderItemModel, OrderModel, ProductModel
 
 api_router = APIRouter(prefix="/api/v1")
@@ -50,15 +53,33 @@ def limit_auth_attempts(request: Request) -> None:
     attempts.append(now)
 
 
-def require_admin(x_admin_key: str = Header(default="")) -> None:
-    configured_key = get_settings().admin_key
-    if not configured_key or x_admin_key != configured_key:
-        raise HTTPException(status_code=401, detail="Geçersiz yönetici anahtarı")
+def require_admin(
+    authorization: str = Header(default=""),
+    x_admin_key: str = Header(default=""),
+) -> None:
+    settings = get_settings()
+    if authorization.startswith("Bearer "):
+        try:
+            subject = decode_access_token(authorization.removeprefix("Bearer ").strip())
+            if subject == f"admin:{settings.admin_username}":
+                return
+        except Exception:
+            pass
+    if settings.environment == "development" and settings.admin_key and compare_digest(
+        x_admin_key.encode("utf-8"), settings.admin_key.encode("utf-8")
+    ):
+        return
+    raise HTTPException(status_code=401, detail="Geçersiz veya süresi dolmuş yönetici oturumu")
 
 
 @api_router.get("/health", tags=["system"])
 async def health() -> dict[str, str]:
     return {"status": "ok"}
+
+
+@api_router.get("/exchange-rates", tags=["system"])
+async def exchange_rates() -> dict[str, object]:
+    return await get_exchange_rates()
 
 
 @api_router.post("/auth/register", response_model=DealerRegistrationResponse, status_code=201, tags=["auth"])
@@ -133,6 +154,28 @@ async def admin_dashboard(session: SessionDep) -> dict:
         "dealers": [{"id": d.id, "company": d.company, "official": d.official, "email": d.email, "phone": d.phone, "city": d.city, "address": d.address, "discount_percent": str(d.discount_percent), "is_approved": d.is_approved, "created_at": d.created_at} for d in dealers],
         "orders": list(orders.values()),
         "products": [{"id": p.id, "name": p.name, "category": p.category, "price_usd": str(p.price_usd), "price_try": str(p.price_try) if p.price_try is not None else "", "price_eur": str(p.price_eur) if p.price_eur is not None else "", "default_currency": p.default_currency, "stock": p.stock, "image_url": p.image_url} for p in (await session.scalars(select(ProductModel).order_by(ProductModel.id.desc()))).all()],
+    }
+
+
+@api_router.post("/admin/login", tags=["admin"])
+async def admin_login(
+    data: AdminLogin,
+    request: Request,
+    session: SessionDep,
+    x_turnstile_token: str = Header(default=""),
+) -> dict:
+    limit_auth_attempts(request)
+    await verify_turnstile(x_turnstile_token, request.client.host if request.client else None)
+    settings = get_settings()
+    if not settings.admin_key or not (
+        compare_digest(data.username.encode("utf-8"), settings.admin_username.encode("utf-8"))
+        and compare_digest(data.password.encode("utf-8"), settings.admin_key.encode("utf-8"))
+    ):
+        raise HTTPException(status_code=401, detail="Yönetici kullanıcı adı veya şifresi hatalı")
+    return {
+        "access_token": create_access_token(f"admin:{settings.admin_username}"),
+        "token_type": "bearer",
+        "dashboard": await admin_dashboard(session),
     }
 
 

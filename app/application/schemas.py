@@ -36,6 +36,11 @@ class DealerLogin(BaseModel):
     website: str = Field(default="", max_length=0)
 
 
+class AdminLogin(BaseModel):
+    username: str = Field(min_length=2, max_length=80)
+    password: str = Field(min_length=8, max_length=256)
+
+
 class DealerRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: int
