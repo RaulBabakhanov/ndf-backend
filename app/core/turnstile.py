@@ -25,6 +25,10 @@ async def verify_turnstile(token: str, remote_ip: str | None) -> None:
 
     if not result.get("success"):
         raise HTTPException(status_code=400, detail="Bot doğrulaması başarısız oldu. Lütfen tekrar deneyin.")
-    expected_hostname = settings.turnstile_expected_hostname.strip()
-    if expected_hostname and result.get("hostname") != expected_hostname:
+    expected_hostnames = {
+        hostname.strip()
+        for hostname in settings.turnstile_expected_hostname.split(",")
+        if hostname.strip()
+    }
+    if expected_hostnames and result.get("hostname") not in expected_hostnames:
         raise HTTPException(status_code=400, detail="Bot doğrulaması geçersiz alan adından geldi.")

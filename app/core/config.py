@@ -31,7 +31,13 @@ class Settings(BaseSettings):
     exchange_rate_fallback_usd: Decimal = Decimal("47.7364")
     exchange_rate_fallback_eur: Decimal = Decimal("55.75")
     access_token_expire_minutes: int = 60
-    cors_origins: list[str] = ["http://localhost:5173", "http://127.0.0.1:5173"]
+    cors_origins: list[str] = [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "https://raulbabakhanov.github.io",
+        "https://ndf-makina.com.tr",
+        "https://www.ndf-makina.com.tr",
+    ]
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 
