@@ -19,6 +19,7 @@ from app.application.schemas import (
     DealerRegistration,
     DealerRead,
     DealerRegistrationResponse,
+    DealerSelfUpdate,
     OrderCreate,
     OrderRead,
     OrderShippingUpdate,
@@ -105,6 +106,18 @@ async def login(data: DealerLogin, session: SessionDep, request: Request) -> Aut
 
 @api_router.get("/auth/me", response_model=DealerRead, tags=["auth"])
 async def me(dealer: CurrentDealer) -> DealerRead:
+    return DealerRead.model_validate(dealer)
+
+
+@api_router.patch("/auth/me", response_model=DealerRead, tags=["auth"])
+async def update_me(data: DealerSelfUpdate, dealer: CurrentDealer, session: SessionDep) -> DealerRead:
+    dealer.company = data.company
+    dealer.official = data.official
+    dealer.city = data.city
+    dealer.address = data.address
+    dealer.phone = data.phone
+    await session.commit()
+    await session.refresh(dealer)
     return DealerRead.model_validate(dealer)
 
 

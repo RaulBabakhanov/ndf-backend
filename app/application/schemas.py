@@ -39,6 +39,14 @@ class DealerAdminUpdate(BaseModel):
     email: EmailStr
 
 
+class DealerSelfUpdate(BaseModel):
+    company: str = Field(min_length=2, max_length=180)
+    official: str = Field(min_length=2, max_length=120)
+    city: str = Field(min_length=2, max_length=80)
+    address: str = Field(default="", max_length=500)
+    phone: str = Field(min_length=10, max_length=30)
+
+
 class DealerLogin(BaseModel):
     email: EmailStr
     password: str
