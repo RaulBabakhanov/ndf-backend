@@ -12,6 +12,7 @@ from app.application.schemas import (
     AuthResponse,
     AdminLogin,
     DealerApprovalUpdate,
+    DealerAdminUpdate,
     DealerCreate,
     DealerDiscountUpdate,
     DealerLogin,
@@ -151,7 +152,7 @@ async def admin_dashboard(session: SessionDep) -> dict:
         })
         entry["items"].append({"name": product.name, "quantity": item.quantity, "unit_price_try": str(item.unit_price_try)})
     return {
-        "dealers": [{"id": d.id, "company": d.company, "official": d.official, "email": d.email, "phone": d.phone, "city": d.city, "address": d.address, "discount_percent": str(d.discount_percent), "is_approved": d.is_approved, "created_at": d.created_at} for d in dealers],
+        "dealers": [{"id": d.id, "company": d.company, "official": d.official, "tax_number": d.tax_number, "email": d.email, "phone": d.phone, "city": d.city, "address": d.address, "discount_percent": str(d.discount_percent), "is_approved": d.is_approved, "created_at": d.created_at} for d in dealers],
         "orders": list(orders.values()),
         "products": [{"id": p.id, "name": p.name, "category": p.category, "price_usd": str(p.price_usd), "price_try": str(p.price_try) if p.price_try is not None else "", "price_eur": str(p.price_eur) if p.price_eur is not None else "", "default_currency": p.default_currency, "stock": p.stock, "image_url": p.image_url} for p in (await session.scalars(select(ProductModel).order_by(ProductModel.id.desc()))).all()],
     }
@@ -275,6 +276,31 @@ async def admin_update_dealer_discount(dealer_id: int, data: DealerDiscountUpdat
     dealer.discount_percent = data.discount_percent
     await session.commit()
     return {"id": dealer.id, "discount_percent": str(dealer.discount_percent)}
+
+
+@api_router.patch("/admin/dealers/{dealer_id}", dependencies=[Depends(require_admin)], tags=["admin"])
+async def admin_update_dealer(dealer_id: int, data: DealerAdminUpdate, session: SessionDep) -> dict:
+    dealer = await session.get(DealerModel, dealer_id)
+    if not dealer:
+        raise HTTPException(404, "Cari bulunamadı")
+    email = data.email.lower()
+    duplicate = await session.scalar(
+        select(DealerModel.id).where(
+            DealerModel.id != dealer_id,
+            (DealerModel.email == email) | (DealerModel.tax_number == data.tax_number),
+        ).limit(1)
+    )
+    if duplicate:
+        raise HTTPException(409, "E-posta veya vergi numarası başka bir caride kayıtlı")
+    dealer.company = data.company
+    dealer.official = data.official
+    dealer.tax_number = data.tax_number
+    dealer.city = data.city
+    dealer.address = data.address
+    dealer.phone = data.phone
+    dealer.email = email
+    await session.commit()
+    return {"id": dealer.id, "company": dealer.company}
 
 
 @api_router.patch("/admin/dealers/{dealer_id}/approval", dependencies=[Depends(require_admin)], tags=["admin"])

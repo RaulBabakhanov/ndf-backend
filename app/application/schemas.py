@@ -29,6 +29,16 @@ class DealerApprovalUpdate(BaseModel):
     is_approved: bool
 
 
+class DealerAdminUpdate(BaseModel):
+    company: str = Field(min_length=2, max_length=180)
+    official: str = Field(min_length=2, max_length=120)
+    tax_number: str = Field(pattern=r"^\d{10,11}$")
+    city: str = Field(min_length=2, max_length=80)
+    address: str = Field(default="", max_length=500)
+    phone: str = Field(min_length=10, max_length=30)
+    email: EmailStr
+
+
 class DealerLogin(BaseModel):
     email: EmailStr
     password: str
